@@ -35,36 +35,82 @@ void Chip8::emulateCycle() {
 	// Execute opcode
 
 	
-	switch (opcode && 0xF000) {
+	switch (opcode & 0xF000) {
 
 		// CLS, RET or SYS
 	case 0x0000:
+
+		switch (opcode & 0x000F) {
+		case 0x0000: // 0x000E
+
+			break;
+		case 0x000E:
+			pc = stack[sp];
+			sp--;
+			break;
+		default:
+			break;
+		}
 		break;
 
 		// JP addr
 	case 0x1000:
-		pc = opcode && 0x0FFF; 
+		pc = opcode & 0x0FFF;
 		break;
 		// Call addr
 	case 0x2000:
-		sp++; 
-		stack[sp] = pc; 
-		pc = opcode && 0x0FFF; 
+		sp++;
+		stack[sp] = pc;
+		pc = opcode & 0x0FFF;
 		break;
 		// SE vx, byte
 	case 0x3000:
+
+		if (V[opcode & 0x0F00] == (opcode & 0x00FF)) {
+			pc += 2;
+		}
 		break;
 		// SNE Vx, byte
 	case 0x4000:
+		if (V[opcode & 0x0F00] != (opcode & 0x00FF) {
+			pc += 2;
+		}
 		break;
-		// SE Vx, Vy
+			// SE Vx, Vy
 	case 0x5000:
+		if (V[opcode & 0x0F00] == v[opcode & 0x00F0]{
+			pc += 2;
+			}
 		break;
 	case 0x6000:
-		break;
+		V[opcode & 0x0F00] = (opcode & 0x00FF);
+			break;
 	case 0x7000:
-		break;
+		V[opcode & 0x0F00] += (opcode & 0x00FF);
+			break;
 	case 0x8000:
+		switch (opcode & 0x000F) {
+		case 0x0000: //8xy0
+			V[opcode & 0x0F00] = v[opcode & 0x00F0];
+			break;
+		
+		case 0x0001:
+
+			V[opcode & 0x0F00] = V[opcode & 0x0F00] | V[opcode & 0x00F0]; 
+			break; 
+		case 0x0002: 
+			V[opcode & 0x0F00] = V[opcode & 0x0F00] & V[opcode & 0x00F0];
+			break; 
+		case 0x0003:
+			V[opcode & 0x0F00] = V[opcode & 0x0F00] ^ V[opcode & 0x00F0];
+			break;
+		case 0x0004:
+			V[opcode & 0x0F00] = V[opcode & 0x0F00] + V[opcode & 0x00F0];
+			break;
+		case 0x0005:
+			V[opcode & 0x0F00] = V[opcode & 0x0F00] - V[opcode & 0x00F0];
+			break;
+		}
 
 		break;
 	case 0x9000:
@@ -77,7 +123,7 @@ void Chip8::emulateCycle() {
 		break;
 
 	case 0xB000:
-
+		pc = (opcode & 0x0FFF) + V[0]; 
 		break;
 
 	case 0XC000: 
@@ -89,7 +135,7 @@ void Chip8::emulateCycle() {
 	case 0xF000: 
 		break; 
 	default: 
-		printf("Unknown opcode: 0x%X\n", opcode); 
+		break; 
 	}
 	//update timers
 
@@ -97,9 +143,6 @@ void Chip8::emulateCycle() {
 		--delay_timer; 
 
 	if (sound_timer > 0) {
-	
-		if(sound_timer == 1)
-			printf("BEEP!\n");
 		--sound_timer;
 	}
 }
