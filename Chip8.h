@@ -28,7 +28,7 @@ public:
 	void SetKeys(SDL_Keycode sym, int eventType);
 	void LoadGame(char* fileName);
 
-	unsigned char gfx[64 * 32];
+	uint8_t gfx[64 * 32];
 
 private: 
 
@@ -38,7 +38,7 @@ private:
 	unsigned short stack[16]; 
 	unsigned short sp; 
 
-	unsigned char key[16];
+	uint8_t key[16];
 
 	unsigned char chip8_fontset[80] = {
 	  0xF0, 0x90, 0x90, 0x90, 0xF0, // 0
