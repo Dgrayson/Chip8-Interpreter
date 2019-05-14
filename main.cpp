@@ -23,7 +23,7 @@ int main(int argc, char **argv)
 	window = SDL_CreateWindow("Chip-8 Emu", 
 								SDL_WINDOWPOS_UNDEFINED, 
 								SDL_WINDOWPOS_UNDEFINED, 
-								1024, 512, 
+								1280, 720, 
 								SDL_WINDOW_RESIZABLE);
 
 	if (window == NULL) {

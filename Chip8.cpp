@@ -54,10 +54,9 @@ void Chip8::emulateCycle() {
 	// Decode opcode
 	// Execute opcode
 
-	
+
 	switch (opcode & 0xF000) {
 
-		// CLS, RET or SYS
 	case 0x0000:
 	{
 		{
@@ -75,9 +74,9 @@ void Chip8::emulateCycle() {
 				The interpreter sets the program counter to the address at the top of the stack,
 				then subtracts 1 from the stack pointer.*/
 			case 0x000E:
-				
+				// Potential issue
+				sp--; 
 				pc = stack[sp];
-				--sp;
 				pc += 2; 
 				break;
 			default:
@@ -99,9 +98,10 @@ void Chip8::emulateCycle() {
 
 	The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to nnn.*/
 	case 0x2000:
-
-		sp++; 
+		// Potenial issue
+		
 		stack[sp] = pc;
+		sp++; 
 		pc = opcode & 0x0FFF;
 		break;
 	/*Skip next instruction if Vx = kk.
@@ -148,14 +148,14 @@ void Chip8::emulateCycle() {
 	case 0x7000:
 		V[(opcode & 0x0F00) >> 8] += (opcode & 0x00FF);
 		pc += 2;
-			break;
+		break;
 	case 0x8000:
 		switch (opcode & 0x000F) {
 		/*Set Vx = Vy.
 
 		Stores the value of register Vy in register Vx.*/
 		case 0x0000: //8xy0
-			V[opcode & 0x0F00] = V[(opcode & 0x00F0) >> 4];
+			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4];
 			pc += 2;
 			break;
 
@@ -166,7 +166,7 @@ void Chip8::emulateCycle() {
 		Otherwise, it is 0. */
 		case 0x0001:
 
-			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] | V[(opcode & 0x00F0) >> 4];
+			V[(opcode & 0x0F00) >> 8] |= V[(opcode & 0x00F0) >> 4];
 			pc += 2;
 			break; 
 
@@ -176,7 +176,7 @@ void Chip8::emulateCycle() {
 		A bitwise AND compares the corrseponding bits from two values, and if both bits are 1, then the same bit in the result is also 1. 
 		Otherwise, it is 0. */
 		case 0x0002: 
-			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] & V[(opcode & 0x00F0) >> 4];
+			V[(opcode & 0x0F00) >> 8] &= V[(opcode & 0x00F0) >> 4];
 			pc += 2;
 			break; 
 
@@ -186,7 +186,7 @@ void Chip8::emulateCycle() {
 		An exclusive OR compares the corrseponding bits from two values, and if the bits are not both the same, then the corresponding bit in the result is set to 1. 
 		Otherwise, it is 0. */
 		case 0x0003:
-			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] ^ V[(opcode & 0x00F0) >> 4];
+			V[(opcode & 0x0F00) >> 8] ^= V[(opcode & 0x00F0) >> 4];
 			pc += 2;
 			break;
 
@@ -209,10 +209,11 @@ void Chip8::emulateCycle() {
 
 		If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.*/
 		case 0x0005:
-			if (V[(opcode & 0x00F0) >> 4] > (0xFF - V[(opcode & 0x0F00) >> 8]))
+			if (V[(opcode & 0x00F0) >> 4] > (V[(opcode & 0x0F00) >> 8]))
 				V[0xF] = 0;
 			else
 				V[0xF] = 1;
+
 			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] - V[(opcode & 0x00F0) >> 4];
 			pc += 2;
 			break;
@@ -222,11 +223,9 @@ void Chip8::emulateCycle() {
 		If the least-significant bit of Vx is 1, then VF is set to 1, otherwise 0. Then Vx is divided by 2.*/
 		case 0x0006: 
 
-			if ((V[(opcode & 0x0F00) >> 8] & 1) == 1) {
-				V[0xF] = 1;
-			}
-			else
-				V[0xF] = 0; 
+			V[0xF] = V[(opcode & 0x0F00) >> 8] & 0x1;
+
+			V[(opcode & 0x0F00) >> 8] >>= 1; 
 
 			pc += 2;
 			break; 
@@ -234,13 +233,19 @@ void Chip8::emulateCycle() {
 		/*Set Vx = Vy - Vx, set VF = NOT borrow.
 
 		If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.*/
-			// TODO
 		case 0x0007:
+
+			if (V[(opcode & 0x0F00) >> 8] >> V[(opcode & 0x00F0) >> 4])
+				V[0XF] = 0;
+			else
+				V[0XF] = 1;
+
 			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4] - V[(opcode & 0x0F00) >> 8]; 
 			pc += 2;
 			break;
 		case 0x000E:
-			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] << 1; 
+			V[0xF] = V[(opcode & 0x0F00) >> 8] >> 7; 
+			V[(opcode & 0x0F00) >> 8] <<= 1; 
 			pc += 2; 
 			break;
 		}
@@ -292,13 +297,15 @@ void Chip8::emulateCycle() {
 
 		V[0xF] = 0;
 
-		for (int yline = 0; yline < height; yline++) {
+		for (int yline = 0; yline < height; yline++)
+		{
 			pixel = memory[I + yline];
-			for (int xline = 0; xline < 8; xline++) {
-				if ((pixel  &(0x80 >> xline)) != 0) {
-					if (gfx[(x + xline + ((y + yline) * 64))] == 1) {
+			for (int xline = 0; xline < 8; xline++)
+			{
+				if ((pixel & (0x80 >> xline)) != 0)
+				{
+					if (gfx[(x + xline + ((y + yline) * 64))] == 1)
 						V[0xF] = 1;
-					}
 					gfx[x + xline + ((y + yline) * 64)] ^= 1;
 				}
 			}
@@ -397,18 +404,17 @@ void Chip8::emulateCycle() {
 			// Store BCD representation of Vx in memory locations I, I+1, and I+2.
 			memory[I] = V[(opcode & 0x0F00) >> 8] / 100; 
 			memory[I] = (V[(opcode & 0x0F00) >> 8] / 10) % 10;
-			memory[I] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
+			memory[I] = V[(opcode & 0x0F00) >> 8] % 10;
 			pc += 2; 
 			break; 
 		case 0x0055: {
-			/*Store registers V0 through Vx in memory starting at location I.
+			/*Store registers V0 thasdfzxcvxrough Vx in memory starting at location I.
 
 			The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I*/
-			int temp = I;
-			for (int x = 0; x <= 15; x++) {
-				memory[temp] = V[x];
-				temp++;
+			for (int x = 0; x <= ((opcode & 0x0F00) >> 8); x++) {
+				memory[I + x] = V[x];
 			}
+			I += ((opcode & 0x0F00) >> 8) + 1;
 			pc += 2;
 		}
 		break; 
@@ -417,11 +423,11 @@ void Chip8::emulateCycle() {
 			/*Read registers V0 through Vx from memory starting at location I.
 
 			The interpreter reads values from memory starting at location I into registers V0 through Vx.*/
-			int temp = I;
-			for (int x = 0; x <= 15; x++) {
-				V[x] = memory[temp];
-				temp++;
+			for (int x = 0; x <= ((opcode & 0x0F00) >> 8); x++) {
+				V[x] = memory[I + x];
 			}
+
+			I += ((opcode & 0x0F00) >> 8) + 1; 
 			pc += 2;
 		}
 			break;
@@ -538,7 +544,6 @@ void Chip8::SetKeys(SDL_Keycode sym, int eventType)
 	case SDLK_e: 
 		key[6] = eventType;
 		break;
-
 	case SDLK_r:
 		key[7] = eventType;
 		break;
