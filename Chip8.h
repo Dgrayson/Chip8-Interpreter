@@ -1,4 +1,7 @@
 #pragma once
+#include <SDL.h>
+#include <string>
+
 class Chip8
 {
 public:
@@ -17,10 +20,15 @@ public:
 	// program counter
 	unsigned short pc; 
 
+	bool drawFlag;
+
 	void init(); 
 	void emulateCycle(); 
-	void LoadGame(); 
-	void SetKeys(); 
+	void LoadGame(std::string name); 
+	void SetKeys(SDL_Keycode sym, int eventType);
+	void LoadGame(char* fileName);
+
+	unsigned char gfx[64 * 32];
 
 private: 
 
@@ -51,5 +59,6 @@ private:
 	  0xF0, 0x80, 0xF0, 0x80, 0x80  // F
 	};;
 
-	unsigned char gfx[64 * 32]; 
+
+	
 };

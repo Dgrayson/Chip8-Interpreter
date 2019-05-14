@@ -1,6 +1,9 @@
 #include "pch.h"
 #include "Chip8.h"
 #include <random>
+#include <SDL.h>
+#include <iostream>
+#include <ctime>
 
 
 Chip8::Chip8()
@@ -17,20 +20,36 @@ void Chip8::init() {
 	pc = 0x200; 
 	opcode = 0; 
 	I = 0; 
-	sp = 0; 
+	sp = 0;
+
+	for(int i = 0; i <= 2048; i++)
+	{
+		gfx[i] = 0;
+	}
+
+	for(int i = 0; i < 16; i++)
+	{
+		stack[i] = 0;
+		key[i] = 0;
+		V[i] = 0; 
+	}
+
+	for(int i = 0; i < 4096; i++)
+	{
+		memory[i] = 0; 
+	}
 
 	for (int i = 0; i < 80; i++) {
 		memory[i] = chip8_fontset[i]; 
-	}	
+	}
+
+	srand(time(NULL)); 
 }
 void Chip8::emulateCycle() {
 	// Fetch opcode
-
-	memory[pc] = 0xA2; 
-	memory[pc + 1] = 0xF0;
-
 	opcode = memory[pc] << 8 | memory[pc + 1]; 
 
+	std::cout << opcode << std::endl; 
 
 	// Decode opcode
 	// Execute opcode
@@ -40,27 +59,35 @@ void Chip8::emulateCycle() {
 
 		// CLS, RET or SYS
 	case 0x0000:
+	{
+		{
+			switch (opcode & 0x000F) {
+				/*Clear the display.*/
+			case 0x0000: // 0x000E
+				for (int i = 0; i < 2048; i++) {
+					gfx[i] = 0;
+				}
+				drawFlag = true;
+				pc += 2;
+				break;
+				/*Return from a subroutine.
 
-		switch (opcode & 0x000F) {
-			/*Clear the display.*/
-		case 0x0000: // 0x000E
-			for (int i = 0; i < 2048; i++) {
-				gfx[i] = 0; 
+				The interpreter sets the program counter to the address at the top of the stack,
+				then subtracts 1 from the stack pointer.*/
+			case 0x000E:
+				
+				pc = stack[sp];
+				--sp;
+				pc += 2; 
+				break;
+			default:
+				std::cout << "Uknown opcode" << opcode;
+				exit(3); 
+				
 			}
-			pc += 2;
-			break;
-			/*Return from a subroutine.
-
-			The interpreter sets the program counter to the address at the top of the stack, 
-			then subtracts 1 from the stack pointer.*/
-		case 0x000E:
-			pc = stack[sp];
-			sp--;
-			break;
-		default:
-			break;
 		}
-		break;
+	}
+	break;
 
 	/*Jump to location nnn.
 
@@ -72,7 +99,8 @@ void Chip8::emulateCycle() {
 
 	The interpreter increments the stack pointer, then puts the current PC on the top of the stack. The PC is then set to nnn.*/
 	case 0x2000:
-		sp++;
+
+		sp++; 
 		stack[sp] = pc;
 		pc = opcode & 0x0FFF;
 		break;
@@ -81,7 +109,7 @@ void Chip8::emulateCycle() {
 	The interpreter compares register Vx to kk, and if they are equal, increments the program counter by 2.*/
 	case 0x3000:
 
-		if (V[opcode & 0x0F00] == (opcode & 0x00FF)) {
+		if (V[(opcode & 0x0F00) >> 8] == (opcode & 0x00FF)) {
 			pc += 4;
 		}
 		else
@@ -101,7 +129,7 @@ void Chip8::emulateCycle() {
 
 	The interpreter compares register Vx to register Vy, and if they are equal, increments the program counter by 2.*/
 	case 0x5000:
-		if (V[(opcode & 0x0F00) >> 8] == V[opcode & 0x00F0]) {
+		if (V[(opcode & 0x0F00) >> 8] == V[opcode & 0x00F0] >> 4) {
 			pc += 4;
 		}
 		else
@@ -167,12 +195,13 @@ void Chip8::emulateCycle() {
 		The values of Vx and Vy are added together. If the result is greater than 8 bits (i.e., > 255,) VF is set to 1, otherwise 0. 
 		Only the lowest 8 bits of the result are kept, and stored in Vx.*/
 		case 0x0004:
+			V[(opcode & 0x0F00) >> 8] += V[(opcode & 0x00F0) >> 4];
 			if(V[(opcode & 0x00F0) >> 4] > (0xFF - V[(opcode & 0x0F00) >> 8]))
 				V[0xF] = 1; 
 			else
 				V[0xF] = 0; 
 
-			V[(opcode & 0x0F00) >> 8] += V[(opcode & 0x00F0) >> 4];
+			
 			pc += 2; 
 			break;
 		
@@ -180,6 +209,10 @@ void Chip8::emulateCycle() {
 
 		If Vx > Vy, then VF is set to 1, otherwise 0. Then Vy is subtracted from Vx, and the results stored in Vx.*/
 		case 0x0005:
+			if (V[(opcode & 0x00F0) >> 4] > (0xFF - V[(opcode & 0x0F00) >> 8]))
+				V[0xF] = 0;
+			else
+				V[0xF] = 1;
 			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] - V[(opcode & 0x00F0) >> 4];
 			pc += 2;
 			break;
@@ -201,9 +234,15 @@ void Chip8::emulateCycle() {
 		/*Set Vx = Vy - Vx, set VF = NOT borrow.
 
 		If Vy > Vx, then VF is set to 1, otherwise 0. Then Vx is subtracted from Vy, and the results stored in Vx.*/
-		case 0x0007: 
+			// TODO
+		case 0x0007:
+			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x00F0) >> 4] - V[(opcode & 0x0F00) >> 8]; 
 			pc += 2;
-			break; 
+			break;
+		case 0x000E:
+			V[(opcode & 0x0F00) >> 8] = V[(opcode & 0x0F00) >> 8] << 1; 
+			pc += 2; 
+			break;
 		}
 
 		break;
@@ -235,18 +274,40 @@ void Chip8::emulateCycle() {
 
 	The interpreter generates a random number from 0 to 255, which is then ANDed with the value kk. 
 	The results are stored in Vx. See instruction 8xy2 for more information on AND.*/
-	case 0XC000: 
+	case 0XC000: {
 		// Random number from 0 to 255
-		int num = rand() % 255; 
+		int num = rand() % 255;
 
-		V[(opcode & 0x0F00) >> 8] = (opcode & 0x00FF) & num; 
+		V[(opcode & 0x0F00) >> 8] = (opcode & 0x00FF) & num;
 		pc += 2;
+	}
 		break; 
 	/*Display n-byte sprite starting at memory location I at (Vx, Vy), set VF = collision.*/
 	case 0xD000: 
-		
+	{
+		unsigned short x = V[(opcode & 0x0F00) >> 8];
+		unsigned short y = V[(opcode & 0x00F0) >> 4];
+		unsigned short height = opcode & 0x000F;
+		unsigned short pixel;
+
+		V[0xF] = 0;
+
+		for (int yline = 0; yline < height; yline++) {
+			pixel = memory[I + yline];
+			for (int xline = 0; xline < 8; xline++) {
+				if ((pixel  &(0x80 >> xline)) != 0) {
+					if (gfx[(x + xline + ((y + yline) * 64))] == 1) {
+						V[0xF] = 1;
+					}
+					gfx[x + xline + ((y + yline) * 64)] ^= 1;
+				}
+			}
+		}
+
+		drawFlag = true;
 		pc += 2;
-		break; 
+	}
+	break; 
 	case 0xE000: 
 
 		switch (opcode & 0x00FF) {
@@ -280,12 +341,26 @@ void Chip8::emulateCycle() {
 			V[(opcode & 0x0F00) >> 8] = delay_timer; 
 			pc += 2; 
 			break; 
-		case 0x000A:
-			//TODO: 
+		case 0x000A: {
 			/*Wait for a key press, store the value of the key in Vx.
 
 			All execution stops until a key is pressed, then the value of that key is stored in Vx.*/
-			break; 
+			bool key_pressed = false;
+
+			for (int i = 0; i <= 15; i++) {
+				if (key[i] != 0)
+				{
+					V[(opcode & 0x0F00) >> 8] = i;
+					key_pressed = true;
+				}
+			}
+
+			if (!key_pressed)
+				return;
+
+			pc += 2;
+		}
+		break; 
 		case 0x0015: 
 			/*Set delay timer = Vx.
 
@@ -304,31 +379,41 @@ void Chip8::emulateCycle() {
 			/*Set I = I + Vx.
 
 			The values of I and Vx are added, and the results are stored in I.*/
+
+			if (I + V[(opcode & 0x0F00) >> 8] > 0xFFF)
+				V[0xF] = 1;
+			else
+				V[0xF] = 0;
+
 			I += V[(opcode & 0x0F00) >> 8];
 			pc += 2; 
 			break; 
 		case 0x0029: 
-			// Todo: Set I = location of sprite for digit Vx.
+			
+			I = V[(opcode & 0x0F00) >> 8] * 0x5; 
 			pc += 2; 
 			break;
 		case 0x0033: 
-			// Todo: Store BCD representation of Vx in memory locations I, I+1, and I+2.
-
+			// Store BCD representation of Vx in memory locations I, I+1, and I+2.
+			memory[I] = V[(opcode & 0x0F00) >> 8] / 100; 
+			memory[I] = (V[(opcode & 0x0F00) >> 8] / 10) % 10;
+			memory[I] = (V[(opcode & 0x0F00) >> 8] % 100) % 10;
 			pc += 2; 
 			break; 
-		case 0x0055: 
+		case 0x0055: {
 			/*Store registers V0 through Vx in memory starting at location I.
 
 			The interpreter copies the values of registers V0 through Vx into memory, starting at the address in I*/
-			int temp = I; 
+			int temp = I;
 			for (int x = 0; x <= 15; x++) {
-				memory[temp] = V[x]; 
-				temp++; 
+				memory[temp] = V[x];
+				temp++;
 			}
-			pc += 2; 
-			break; 
+			pc += 2;
+		}
+		break; 
 
-		case 0x0065: 
+		case 0x0065: {
 			/*Read registers V0 through Vx from memory starting at location I.
 
 			The interpreter reads values from memory starting at location I into registers V0 through Vx.*/
@@ -337,12 +422,18 @@ void Chip8::emulateCycle() {
 				V[x] = memory[temp];
 				temp++;
 			}
-			pc += 2; 
+			pc += 2;
+		}
+			break;
+
+		default:
+			std::cout << "Unknown opcode" << std::endl; 
 			break; 
 		}
 		break; 
-	default: 
-		break; 
+	default:
+		std::cout << "Unknown opcode" << std::endl; 
+		exit(3); 
 	}
 	//update timers
 
@@ -353,3 +444,132 @@ void Chip8::emulateCycle() {
 		--sound_timer;
 	}
 }
+
+void Chip8::LoadGame(char* file_path)
+{
+	printf("Loading ROM: %s\n", file_path);
+
+	// Open ROM file
+	FILE* rom;
+	fopen_s(&rom, file_path, "rb");
+	if (rom == NULL) {
+		std::cerr << "Failed to open ROM" << std::endl;
+	}
+
+	// Get file size
+	fseek(rom, 0, SEEK_END);
+	long rom_size = ftell(rom);
+	rewind(rom);
+
+	// Allocate memory to store rom
+	char* rom_buffer = (char*)malloc(sizeof(char) * rom_size);
+	if (rom_buffer == NULL) {
+		std::cerr << "Failed to allocate memory for ROM" << std::endl;
+	}
+
+	// Copy ROM into buffer
+	size_t result = fread(rom_buffer, sizeof(char), (size_t)rom_size, rom);
+	if (result != rom_size) {
+		std::cerr << "Failed to read ROM" << std::endl;
+	}
+
+	// Copy buffer to memory
+	if ((4096 - 512) > rom_size) {
+		for (int i = 0; i < rom_size; ++i) {
+			memory[i + 512] = (uint8_t)rom_buffer[i];   // Load into memory starting
+														// at 0x200 (=512)
+		}
+	}
+	else {
+		std::cerr << "ROM too large to fit in memory" << std::endl;
+	}
+
+	// Clean up
+	fclose(rom);
+	free(rom_buffer);
+	/*
+	std::cout << "Loading " << fileName << std::endl; 
+	FILE* rom;
+	fopen_s(&rom, fileName, "rb");
+	FILE* tempRom = rom;
+
+	fseek(tempRom, 0, SEEK_END);
+
+	long size = ftell(tempRom);
+
+	char* buffer = (char*)malloc(sizeof(char) * size);
+
+	fread(buffer, sizeof(char), size, rom); 
+
+	for(int i = 0; i < size; i++)
+	{
+		memory[i + 512] = buffer[i]; 
+	}
+
+	fclose(rom);
+
+	std::cout << "File Loaded" << std::endl;*/
+}
+
+void Chip8::SetKeys(SDL_Keycode sym, int eventType)
+{
+
+	std::cout << "keyPressed" << sym << std::endl; 
+	switch(sym)
+	{
+	case SDLK_1:
+		key[0] = eventType; 
+		break;
+	case SDLK_2:
+		key[1] = eventType;
+		break;
+	case SDLK_3:
+		key[2] = eventType;
+		break;
+	case SDLK_4:
+		key[3] = eventType;
+		break;
+	case SDLK_q: 
+		key[4] = eventType;
+		break;
+	case SDLK_w:
+		key[5] = eventType;
+		break;
+	case SDLK_e: 
+		key[6] = eventType;
+		break;
+
+	case SDLK_r:
+		key[7] = eventType;
+		break;
+	case SDLK_a:
+		key[8] = eventType;
+		break;
+	case SDLK_s:
+		key[9] = eventType;
+		break;
+	case SDLK_d:
+		key[10] = eventType;
+		break;
+	case SDLK_f:
+		key[11] = eventType;
+		break;
+	case SDLK_z:
+		key[12] = eventType;
+		break;
+	case SDLK_x:
+		key[13] = eventType;
+		break;
+	case SDLK_c:
+		key[14] = eventType;
+		break;
+	case SDLK_v:
+		key[14] = eventType;
+		break;
+	default:
+		// do nothing
+		break;
+	}
+
+}
+
