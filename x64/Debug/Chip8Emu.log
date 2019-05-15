@@ -1,3 +1,5 @@
 ﻿  Chip8.cpp
 c:\users\dgray\source\repos\chip8emu\chip8emu\chip8.cpp(46): warning C4244: 'argument': conversion from 'time_t' to 'unsigned int', possible loss of data
+  main.cpp
+  Generating Code...
   Chip8Emu.vcxproj -> C:\Users\dgray\source\repos\Chip8Emu\x64\Debug\Chip8Emu.exe

@@ -8,8 +8,21 @@ public:
 	Chip8();
 	~Chip8();
 
-	unsigned short opcode; 
-	unsigned char memory[4096]; 
+	bool drawFlag;
+	uint8_t gfx[64 * 32];
+
+	void init(); 
+	void emulateCycle(); 
+	void LoadGame(std::string name); 
+	void SetKeys(SDL_Keycode sym, int eventType);
+	void LoadGame(char* fileName);
+
+
+
+private: 
+	unsigned short opcode;
+
+	unsigned char memory[4096];
 
 	unsigned char V[16];
 
@@ -18,19 +31,7 @@ public:
 
 
 	// program counter
-	unsigned short pc; 
-
-	bool drawFlag;
-
-	void init(); 
-	void emulateCycle(); 
-	void LoadGame(std::string name); 
-	void SetKeys(SDL_Keycode sym, int eventType);
-	void LoadGame(char* fileName);
-
-	uint8_t gfx[64 * 32];
-
-private: 
+	unsigned short pc;
 
 	unsigned char delay_timer; 
 	unsigned char sound_timer; 
