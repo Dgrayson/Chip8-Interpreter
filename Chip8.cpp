@@ -49,7 +49,7 @@ void Chip8::emulateCycle() {
 	// Fetch opcode
 	opcode = memory[pc] << 8 | memory[pc + 1]; 
 
-	std::cout << opcode << std::endl; 
+	//std::cout << opcode << std::endl; 
 
 	// Decode opcode
 	// Execute opcode
@@ -451,70 +451,35 @@ void Chip8::emulateCycle() {
 	}
 }
 
-void Chip8::LoadGame(char* file_path)
+void Chip8::LoadGame(char* fileName)
 {
-	printf("Loading ROM: %s\n", file_path);
-
-	// Open ROM file
-	FILE* rom;
-	fopen_s(&rom, file_path, "rb");
-	if (rom == NULL) {
-		std::cerr << "Failed to open ROM" << std::endl;
-	}
-
-	// Get file size
-	fseek(rom, 0, SEEK_END);
-	long rom_size = ftell(rom);
-	rewind(rom);
-
-	// Allocate memory to store rom
-	char* rom_buffer = (char*)malloc(sizeof(char) * rom_size);
-	if (rom_buffer == NULL) {
-		std::cerr << "Failed to allocate memory for ROM" << std::endl;
-	}
-
-	// Copy ROM into buffer
-	size_t result = fread(rom_buffer, sizeof(char), (size_t)rom_size, rom);
-	if (result != rom_size) {
-		std::cerr << "Failed to read ROM" << std::endl;
-	}
-
-	// Copy buffer to memory
-	if ((4096 - 512) > rom_size) {
-		for (int i = 0; i < rom_size; ++i) {
-			memory[i + 512] = (uint8_t)rom_buffer[i];   // Load into memory starting
-														// at 0x200 (=512)
-		}
-	}
-	else {
-		std::cerr << "ROM too large to fit in memory" << std::endl;
-	}
-
-	// Clean up
-	fclose(rom);
-	free(rom_buffer);
-	/*
-	std::cout << "Loading " << fileName << std::endl; 
+	std::cout << "Loading ROM..." << fileName << std::endl;
 	FILE* rom;
 	fopen_s(&rom, fileName, "rb");
-	FILE* tempRom = rom;
 
-	fseek(tempRom, 0, SEEK_END);
+	if (rom == nullptr)
+		std::cout << "Failed to open rom" << std::endl; 
 
-	long size = ftell(tempRom);
+	fseek(rom, 0, SEEK_END);
+
+	long size = ftell(rom);
+
+	rewind(rom); 
 
 	char* buffer = (char*)malloc(sizeof(char) * size);
 
-	fread(buffer, sizeof(char), size, rom); 
+	fread(buffer, sizeof(char), size, rom);
 
-	for(int i = 0; i < size; i++)
+	for (int i = 0; i < size; i++)
 	{
-		memory[i + 512] = buffer[i]; 
+		memory[i + 512] = buffer[i];
 	}
 
 	fclose(rom);
+	free(buffer);
 
-	std::cout << "File Loaded" << std::endl;*/
+	std::cout << "File Loaded" << std::endl;
+	
 }
 
 void Chip8::SetKeys(SDL_Keycode sym, int eventType)
